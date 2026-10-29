@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, render_template, session, g, Response
 from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
-import calendar, csv, sqlite3, secrets, hashlib, hmac, json, os, re
+import calendar, csv, sqlite3, secrets, hashlib, hmac, json, os, re, unicodedata
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from ai_engine import diagnose, norm, Knowledge
 
@@ -19,7 +19,10 @@ LEGACY_DISPLAY_NAMES = {
 }
 
 def display_name(value):
-    return LEGACY_DISPLAY_NAMES.get(value, value)
+    if not isinstance(value,str):return value
+    value=unicodedata.normalize('NFC',value).strip()
+    value=LEGACY_DISPLAY_NAMES.get(value,value)
+    return re.sub(r'\s*\(\s*mẫu\s*\)\s*$','',value,flags=re.IGNORECASE).strip()
 
 def create_app(config=None):
     app=Flask(__name__,template_folder='Templates')

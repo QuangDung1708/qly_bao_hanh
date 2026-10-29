@@ -34,7 +34,13 @@ Sau lần chạy đầu, khóa AES-256 và chữ ký phiên được tạo tại
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pytest -q
 ```
-19 kiểm thử nghiệp vụ tự động dùng DB tạm, không ghi đè DB của bạn. Kết quả trên máy kiểm thử Python 3.12: 19 passed. Chưa thực thi trực tiếp trên Windows; các lệnh Windows được cung cấp để bạn chạy bằng VS Code.
+20 kiểm thử nghiệp vụ tự động dùng DB tạm, không ghi đè DB của bạn. Kết quả trên máy kiểm thử Python 3.12: 20 passed. Chưa thực thi trực tiếp trên Windows; các lệnh Windows được cung cấp để bạn chạy bằng VS Code.
+
+Kiểm tra định dạng giao diện (tùy chọn, cần Node.js):
+```powershell
+node test_display.cjs
+```
+6 trường hợp kiểm tra chuyển UTC sang giờ Việt Nam, ngày chỉ có ngày/tháng/năm, dữ liệu không hợp lệ và tên kỹ thuật viên cũ. Ngày giờ trên thẻ kết quả hiển thị theo `Asia/Ho_Chi_Minh`; timestamp trong API/database vẫn giữ ISO để bảo toàn thời điểm gốc. Sau khi thay `app.py`, dừng server bằng Ctrl+C rồi chạy lại; thay cả `Templates/index.html` và `static/app.js`, sau đó nhấn Ctrl+F5 trên trình duyệt. Không xóa `warranty.db` hoặc `instance/local.key`.
 
 ## Giới hạn trung thực theo SRD
 Đây là **prototype chạy offline sau khi cài thư viện**, không đạt toàn bộ đặc tả production trong PDF. Báo cáo đối chiếu được bàn giao riêng trong cuộc trò chuyện, không đưa lên GitHub.

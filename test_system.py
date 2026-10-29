@@ -124,3 +124,18 @@ def test_idempotent_schema_preserves_original(setup):
     app,_,_=setup
     create_app({'TESTING':True,'DATABASE':app.config['DATABASE']})
     with sqlite3.connect(app.config['DATABASE']) as db:assert db.execute('SELECT count(*) FROM products').fetchone()[0]==16
+
+
+def test_tracking_cleans_legacy_technician_without_rewriting_record(setup):
+    app,_,post=setup
+    activate(post)
+    code=rma(post).json['rma_code']
+    legacy=' KTV Thái Nguyên ( MẪU ) '
+    with sqlite3.connect(app.config['DATABASE']) as db:
+        db.execute('UPDATE rma_requests SET technician=?,created_at=? WHERE rma_code=?',
+                   (legacy,'2026-10-29T23:21:42.158185+00:00',code))
+    row=post('track_rma',query=code).json['requests'][0]
+    assert row['technician']=='KTV Thái Nguyên'
+    assert row['created_at']=='2026-10-29T23:21:42.158185+00:00'
+    with sqlite3.connect(app.config['DATABASE']) as db:
+        assert db.execute('SELECT technician FROM rma_requests WHERE rma_code=?',(code,)).fetchone()[0]==legacy
