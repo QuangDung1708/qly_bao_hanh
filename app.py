@@ -8,6 +8,19 @@ from ai_engine import diagnose, norm, Knowledge
 BASE=Path(__file__).resolve().parent
 STATES={'APPROVED_STP':'Đã duyệt tự động', 'PENDING_MANUAL_REVIEW':'Chờ kỹ thuật viên xem xét', 'FLAGGED_FRAUD':'Tạm dừng — bất thường', 'RECEIVED':'Đã tiếp nhận', 'IN_DIAGNOSIS':'Đang chẩn đoán', 'REPAIRING':'Đang sửa chữa', 'COMPLETED':'Hoàn tất', 'RETURNED':'Đã giao lại khách'}
 
+LEGACY_DISPLAY_NAMES = {
+    'Bàn phím demo 12 tháng': 'Bàn phím cơ 12 tháng',
+    'Trung tâm mẫu Hà Nội': 'Trung tâm bảo hành Hà Nội',
+    'Trung tâm mẫu Thái Nguyên': 'Trung tâm bảo hành Thái Nguyên',
+    'Trung tâm mẫu TP.HCM': 'Trung tâm bảo hành TP.HCM',
+    'KTV Hà Nội (mẫu)': 'KTV Hà Nội',
+    'KTV Thái Nguyên (mẫu)': 'KTV Thái Nguyên',
+    'KTV TP.HCM (mẫu)': 'KTV TP.HCM',
+}
+
+def display_name(value):
+    return LEGACY_DISPLAY_NAMES.get(value, value)
+
 def create_app(config=None):
     app=Flask(__name__,template_folder='Templates')
     instance=BASE/'instance';instance.mkdir(exist_ok=True)
@@ -51,9 +64,9 @@ def create_app(config=None):
             with (BASE/'products.csv').open(encoding='utf-8-sig') as f:
                 for row in csv.DictReader(f):c.execute('INSERT INTO products(serial,model,status,exp_date) VALUES (?,?,?,?)',tuple(row[k] for k in ['serial','model','status','exp_date']))
         # An explicit demo product does not alter the supplied 15 original products.
-        c.execute("INSERT OR IGNORE INTO products(serial,model,status,months) VALUES ('SN-DEMO-001','Bàn phím demo 12 tháng','Chưa kích hoạt',12)")
+        c.execute("INSERT OR IGNORE INTO products(serial,model,status,months) VALUES ('SN-DEMO-001','Bàn phím cơ 12 tháng','Chưa kích hoạt',12)")
         c.execute("UPDATE products SET months=24 WHERE serial LIKE 'SN-VGA-%' OR serial LIKE 'SN-CPU-%'")
-        for center in [('CT-HN','Trung tâm mẫu Hà Nội','Cầu Giấy, Hà Nội','IN_STOCK','KTV Hà Nội (mẫu)'),('CT-TN','Trung tâm mẫu Thái Nguyên','Quyết Thắng, Thái Nguyên','IN_STOCK','KTV Thái Nguyên (mẫu)'),('CT-HCM','Trung tâm mẫu TP.HCM','Quận 1, TP.HCM','LOW_STOCK','KTV TP.HCM (mẫu)')]:
+        for center in [('CT-HN','Trung tâm bảo hành Hà Nội','Cầu Giấy, Hà Nội','IN_STOCK','KTV Hà Nội'),('CT-TN','Trung tâm bảo hành Thái Nguyên','Quyết Thắng, Thái Nguyên','IN_STOCK','KTV Thái Nguyên'),('CT-HCM','Trung tâm bảo hành TP.HCM','Quận 1, TP.HCM','LOW_STOCK','KTV TP.HCM')]:
             c.execute('INSERT OR IGNORE INTO centers VALUES (?,?,?,?,?)',center)
             c.execute('UPDATE centers SET technician=COALESCE(technician,?) WHERE center_id=?',(center[4],center[0]))
             for part,qty,lead in [('Bàn phím',8,0),('Màn hình',0,5),('Chuột',2,0)]:c.execute('INSERT OR IGNORE INTO inventory VALUES (?,?,?,?)',(center[0],part,qty,lead))
@@ -67,15 +80,15 @@ def create_app(config=None):
     def warranty(p):
         active=bool(p['purchase_date']) or p['status']=='Đã kích hoạt'
         expired=bool(p['exp_date']) and p['exp_date']<date.today().isoformat()
-        return dict(serial=p['serial'],model=p['model'],status='Đã hết hạn' if expired else 'Đã kích hoạt — Còn hạn' if active else 'Chưa kích hoạt',purchase_date=p['purchase_date'],exp_date=p['exp_date'],genuine=True)
+        return dict(serial=p['serial'],model=display_name(p['model']),status='Đã hết hạn' if expired else 'Đã kích hoạt — Còn hạn' if active else 'Chưa kích hoạt',purchase_date=p['purchase_date'],exp_date=p['exp_date'],genuine=True)
     def locate(data):
         q=norm(str(data.get('location','')).strip())
         if not q:return fail('Vui lòng nhập tỉnh/thành hoặc quận/huyện.')
         centers=list(db().execute('SELECT * FROM centers'))
         candidates=[c for c in centers if q in norm(c['location']) or any(alias in q and alias in norm(c['location']) for alias in ['ha noi','thai nguyen','hcm']) or ('ho chi minh' in q and c['center_id']=='CT-HCM')]
-        if not candidates:return fail('Chưa có trung tâm trong khu vực mẫu. Có thể gửi bưu điện tới Hà Nội/TP.HCM; chưa thể xác định khoảng cách thực tế.',404)
+        if not candidates:return fail('Chưa tìm thấy trung tâm trong khu vực này. Bạn có thể gửi bưu điện tới trung tâm Hà Nội hoặc TP.HCM.',404)
         c=candidates[0]
-        return dict(success=True,center_id=c['center_id'],center_name=c['name'],address=c['location'],technician=c['technician'],phone='Hotline mẫu: 1900-8888',hours='08:00–17:30, Thứ 2–Thứ 7',directions='Đến địa chỉ trên và cung cấp mã RMA; dữ liệu địa điểm là giả lập.')
+        return dict(success=True,center_id=c['center_id'],center_name=display_name(c['name']),address=c['location'],technician=display_name(c['technician']),phone='1900-8888',hours='08:00–17:30, Thứ 2–Thứ 7',directions='Đến địa chỉ trên và cung cấp mã RMA.')
     def check(data):
         q=str(data.get('query',data.get('serial',''))).strip().upper()
         if re.fullmatch(r'0\d{9}',q):
@@ -85,7 +98,7 @@ def create_app(config=None):
             return dict(success=True,products=[warranty(p) for p in rows])
         if not valid_serial(q):return fail('Mã seri không đúng định dạng.')
         p=db().execute('SELECT * FROM products WHERE serial=?',(q,)).fetchone()
-        if not p:return fail('Mã seri không có trong dữ liệu chính hãng mẫu. Vui lòng kiểm tra lại.',404)
+        if not p:return fail('Mã seri không có trong hệ thống. Vui lòng kiểm tra lại.',404)
         return dict(success=True,**warranty(p))
     def activate(data):
         text=str(data.get('text',''))
@@ -112,7 +125,7 @@ def create_app(config=None):
         token=secrets.token_urlsafe(24)
         c.execute('UPDATE products SET purchase_date=?,exp_date=?,status=?,customer_name=?,phone_cipher=?,phone_hash=?,owner_hash=?,activated_at=? WHERE serial=?',(buy.isoformat(),end.isoformat(),'Đã kích hoạt',encrypt(name),encrypt(phone),digest(phone),digest(token),datetime.now(timezone.utc).isoformat(),serial));c.commit()
         session['owned']=list(set(session.get('owned',[])+[serial]))
-        return dict(success=True,serial=serial,model=p['model'],purchase_date=buy.isoformat(),exp_date=end.isoformat(),access_token=token,message='Đã kích hoạt. Lưu mã truy cập riêng để định danh trên trình duyệt khác; không chia sẻ mã này.')
+        return dict(success=True,serial=serial,model=display_name(p['model']),purchase_date=buy.isoformat(),exp_date=end.isoformat(),access_token=token,message='Đã kích hoạt. Lưu mã truy cập riêng để định danh trên trình duyệt khác; không chia sẻ mã này.')
     def identify(data):
         serial=str(data.get('serial','')).upper().strip();token=str(data.get('access_token',''))
         p=db().execute('SELECT * FROM products WHERE serial=?',(serial,)).fetchone()
@@ -148,7 +161,7 @@ def create_app(config=None):
         eta=(date.today()+timedelta(days=2)).isoformat()
         c.execute('''INSERT INTO rma_requests(rma_code,serial,issue_desc,status,created_at,phone_hash,address_cipher,delivery,center_id,technician,expected_date,approval,diagnosis,flags) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',(code,serial,issue,approval,now.isoformat(),p['phone_hash'],encrypt(address),delivery,center['center_id'],center['technician'],eta,approval,json.dumps(d,ensure_ascii=False),json.dumps(flags,ensure_ascii=False)))
         c.commit()
-        return dict(success=True,rma_code=code,status=approval,diagnosis=d,flags=flags,expected_date=eta,message=STATES[approval]+'. Ghi mã RMA bên ngoài kiện hàng. Dự kiến hoàn tất chỉ là dữ liệu mẫu, phụ thuộc linh kiện.')
+        return dict(success=True,rma_code=code,status=approval,diagnosis=d,flags=flags,expected_date=eta,message=STATES[approval]+'. Ghi mã RMA bên ngoài kiện hàng.')
     def track(data):
         q=str(data.get('query',data.get('rma_code',''))).upper().strip()
         if re.fullmatch(r'RMA-\d{4}-\d{5}',q):rows=db().execute('SELECT * FROM rma_requests WHERE rma_code=?',(q,)).fetchall()
@@ -156,14 +169,14 @@ def create_app(config=None):
         else:return fail('Nhập SĐT 10 chữ số hoặc mã RMA-YYYY-XXXXX.')
         allowed=set(session.get('owned',[]));rows=[r for r in rows if r['serial'] in allowed]
         if not rows:return fail('Không tìm thấy hồ sơ thuộc sản phẩm đã định danh trong phiên này.',404)
-        return dict(success=True,requests=[dict(rma_code=r['rma_code'],serial=r['serial'],status=r['status'],status_text=STATES.get(r['status'],r['status']),created_at=r['created_at'],technician=r['technician'],expected_date=r['expected_date'],center_id=r['center_id'],timeline=[dict(status=r['status'],at=r['created_at'])]) for r in rows])
+        return dict(success=True,requests=[dict(rma_code=r['rma_code'],serial=r['serial'],status=r['status'],status_text=STATES.get(r['status'],r['status']),created_at=r['created_at'],technician=display_name(r['technician']),expected_date=r['expected_date'],center_id=r['center_id'],timeline=[dict(status=r['status'],at=r['created_at'])]) for r in rows])
     def stock(data):
         center=str(data.get('center_id','CT-TN'));part=norm(str(data.get('part','')).strip())
         if not part:return fail('Cần nhập tên linh kiện.')
         rows=db().execute('SELECT * FROM inventory WHERE center_id=?',(center,)).fetchall()
         rows=[r for r in rows if part in norm(r['part']) or norm(r['part']) in part]
-        if not rows:return fail('Chưa có linh kiện này trong kho mẫu.',404)
-        return dict(success=True,inventory=[dict(part=r['part'],center_id=r['center_id'],quantity=r['quantity'],stock_status='OUT_OF_STOCK' if r['quantity']==0 else 'LOW_STOCK' if r['quantity']<=2 else 'IN_STOCK',estimate='3–5 ngày làm việc' if r['quantity']==0 else '24–48 giờ',reservation=False) for r in rows],message='Kho giả lập; chưa cam kết giữ linh kiện.')
+        if not rows:return fail('Không tìm thấy linh kiện này trong kho.',404)
+        return dict(success=True,inventory=[dict(part=r['part'],center_id=r['center_id'],quantity=r['quantity'],stock_status='OUT_OF_STOCK' if r['quantity']==0 else 'LOW_STOCK' if r['quantity']<=2 else 'IN_STOCK',estimate='3–5 ngày làm việc' if r['quantity']==0 else '24–48 giờ',reservation=False) for r in rows])
     operations={'check_warranty':check,'activate':activate,'identify':identify,'submit_rma':submit,'track_rma':track,'locate_center':locate,'stock':stock,'diagnose':lambda d:dict(success=True,diagnosis=diagnose(str(d.get('issue_desc',''))))}
     def chat(data):
         msg=str(data.get('message','')).strip();t=norm(msg)
@@ -181,7 +194,9 @@ def create_app(config=None):
         elif any(k in t for k in ['liet','hong','khong len','rung lac','chop tat']):result=operations['diagnose']({'issue_desc':msg})
         if result is not None:
             if isinstance(result,tuple):result=result[0]
-            return dict(success=True,reply=json.dumps(result,ensure_ascii=False,indent=2),sources=['Mock DB / bộ quy tắc chẩn đoán'])
+            if isinstance(result.get('diagnosis'),dict):
+                result={**result,'diagnosis':{k:v for k,v in result['diagnosis'].items() if k!='disclaimer'}}
+            return dict(success=True,reply=json.dumps(result,ensure_ascii=False,indent=2),sources=['Hệ thống bảo hành'])
         return dict(success=True,**kb.query(msg))
     operations['chat']=chat
     @app.get('/')

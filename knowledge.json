@@ -1,8 +1,32 @@
 [
- {"keywords":"bảo hành|thời hạn|12 tháng|24 tháng", "text":"Thời hạn mẫu là 12 hoặc 24 tháng theo Model. Ngày mua hợp lệ là ngày bắt đầu; ngày kết thúc được tính theo tháng lịch. Tra cứu seri để xem thông tin cụ thể.", "source":"KB-DEMO-01 — Chính sách mẫu của bản demo; SRD UC-01, tr.17"},
- {"keywords":"rơi|vỡ|vào nước|mất tem|ngoại lực", "text":"Rơi vỡ, vào nước, tự ý tháo mở hoặc mất tem không đủ điều kiện duyệt miễn phí tự động. Trường hợp có nhiều nguyên nhân cần kỹ thuật viên kiểm tra; khách có thể xác nhận sửa chữa có phí, chưa thực hiện thanh toán.", "source":"SRD UC-04/05, tr.20–21"},
- {"keywords":"đơ|treo|phần mềm|khắc phục", "text":"Bước 1: Lưu công việc nếu có thể và ngắt thiết bị ngoại vi không cần thiết.\nBước 2: Khởi động lại theo hướng dẫn của nhà sản xuất, không tự tháo máy.\nBước 3: Nếu lỗi lặp lại, ghi nhận hiện tượng và gửi yêu cầu RMA. Nếu có khói, mùi cháy hoặc chất lỏng, ngắt nguồn khi an toàn và chuyển kỹ thuật viên.", "source":"KB-DEMO-02 — Hướng dẫn mẫu, cần duyệt trước sử dụng thực tế"},
- {"keywords":"linh kiện|bao lâu|thời gian|tồn kho", "text":"Dữ liệu kho là giả lập. Còn hàng: thời gian xử lý dự kiến 24–48 giờ. Hết hàng: thời gian đặt dự kiến 3–5 ngày làm việc. Chưa tạo RMA thì hệ thống không giữ hàng.", "source":"SRD UC-08, tr.25"},
- {"keywords":"pin", "text":"PDF không quy định riêng thời hạn hay ngưỡng chai pin. Cần chính sách đã được phê duyệt cho Model cụ thể; hệ thống không tự đặt mốc 6 tháng hoặc mức chai pin 20%.", "source":"Đối chiếu SRD: chưa có điều khoản riêng cho pin"},
- {"keywords":"chào|xin chào", "text":"Xin chào! Tôi hỗ trợ tra cứu seri, hồ sơ RMA, trung tâm, linh kiện và chính sách mẫu bằng văn bản. Bạn có thể gõ: Kiểm tra bảo hành SN-KEY-001.", "source":"Hướng dẫn sử dụng bản demo"}
+  {
+    "keywords": "bảo hành|thời hạn|12 tháng|24 tháng",
+    "text": "Thời hạn bảo hành là 12 hoặc 24 tháng theo Model. Ngày mua hợp lệ là ngày bắt đầu; ngày kết thúc được tính theo tháng lịch. Tra cứu seri để xem thông tin cụ thể.",
+    "source": "KB-01 — Chính sách bảo hành; SRD UC-01, tr.17"
+  },
+  {
+    "keywords": "rơi|vỡ|vào nước|mất tem|ngoại lực",
+    "text": "Rơi vỡ, vào nước, tự ý tháo mở hoặc mất tem không đủ điều kiện duyệt miễn phí tự động. Trường hợp có nhiều nguyên nhân cần kỹ thuật viên kiểm tra; khách có thể xác nhận sửa chữa có phí, chưa thực hiện thanh toán.",
+    "source": "SRD UC-04/05, tr.20–21"
+  },
+  {
+    "keywords": "đơ|treo|phần mềm|khắc phục",
+    "text": "Bước 1: Lưu công việc nếu có thể và ngắt thiết bị ngoại vi không cần thiết.\nBước 2: Khởi động lại theo hướng dẫn của nhà sản xuất, không tự tháo máy.\nBước 3: Nếu lỗi lặp lại, ghi nhận hiện tượng và gửi yêu cầu RMA. Nếu có khói, mùi cháy hoặc chất lỏng, ngắt nguồn khi an toàn và chuyển kỹ thuật viên.",
+    "source": "KB-02 — Hướng dẫn xử lý sự cố"
+  },
+  {
+    "keywords": "linh kiện|bao lâu|thời gian|tồn kho",
+    "text": "Còn hàng: thời gian xử lý dự kiến 24–48 giờ. Hết hàng: thời gian đặt dự kiến 3–5 ngày làm việc.",
+    "source": "SRD UC-08, tr.25"
+  },
+  {
+    "keywords": "pin",
+    "text": "Thời hạn và điều kiện bảo hành pin phụ thuộc Model sản phẩm. Vui lòng cung cấp mã seri hoặc liên hệ trung tâm để kiểm tra chính sách áp dụng.",
+    "source": "Hướng dẫn tra cứu chính sách theo sản phẩm"
+  },
+  {
+    "keywords": "chào|xin chào",
+    "text": "Xin chào! Tôi hỗ trợ tra cứu seri, hồ sơ RMA, trung tâm, linh kiện và chính sách bằng văn bản. Bạn có thể gõ: Kiểm tra bảo hành SN-KEY-001.",
+    "source": "Hướng dẫn sử dụng hệ thống"
+  }
 ]
