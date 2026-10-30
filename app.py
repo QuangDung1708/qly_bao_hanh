@@ -24,6 +24,76 @@ def display_name(value):
     value=LEGACY_DISPLAY_NAMES.get(value,value)
     return re.sub(r'\s*\(\s*mẫu\s*\)\s*$','',value,flags=re.IGNORECASE).strip()
 
+
+def chat_date(value):
+    """Human-readable date in Vietnam; retain ISO values in business APIs/DB."""
+    if not value:return 'Chưa cập nhật'
+    try:
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}',value):
+            return date.fromisoformat(value).strftime('%d/%m/%Y')
+        dt=datetime.fromisoformat(value.replace('Z','+00:00'))
+        if dt.tzinfo is None:dt=dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone(timedelta(hours=7))).strftime('%d/%m/%Y %H:%M:%S')
+    except (ValueError,TypeError):return str(value)
+
+
+def chat_reply(result):
+    """Present business results as customer-facing text, never a JSON dump."""
+    if not result.get('success'):
+        return result.get('message','Chưa tìm thấy thông tin phù hợp. Vui lòng kiểm tra lại.')
+    if 'diagnosis' in result:
+        d=result['diagnosis'];category=d.get('category','UNKNOWN')
+        replies={
+            'MIXED': 'Mô tả có dấu hiệu tác động ngoại lực kèm sự cố thiết bị. Hư hỏng do rơi vỡ hoặc vào nước thường nằm ngoài phạm vi bảo hành miễn phí. Trung tâm cần kiểm tra trực tiếp để xác định nguyên nhân và hình thức sửa chữa phù hợp.',
+            'USER_FAULT': 'Mô tả có dấu hiệu hư hỏng do tác động ngoại lực hoặc vi phạm điều kiện bảo hành. Trường hợp này thường không được bảo hành miễn phí; bạn có thể gửi yêu cầu để trung tâm kiểm tra và tư vấn sửa chữa có phí.',
+            'MANUFACTURER': 'Triệu chứng có dấu hiệu lỗi kỹ thuật. Sản phẩm có thể được xét bảo hành miễn phí nếu còn hạn và đáp ứng điều kiện bảo hành. Bạn hãy cung cấp mã seri để kiểm tra thời hạn.',
+            'UNKNOWN': 'Tôi chưa xác định được nguyên nhân từ mô tả này. Bạn có thể cho biết thiết bị nào gặp lỗi, biểu hiện cụ thể và lỗi xuất hiện từ khi nào không?',
+        }
+        reply=replies.get(category,replies['UNKNOWN'])
+        if category!='UNKNOWN':
+            reply+='\nBộ phận có thể liên quan: '+d.get('cause','Cần kiểm tra trực tiếp')+'.'
+            reply+='\nBạn có thể mở mục Tạo hồ sơ RMA để gửi yêu cầu hỗ trợ.'
+        return reply
+    if 'products' in result or 'model' in result:
+        products=result.get('products',[result]);cards=[]
+        for product in products:
+            lines=['Thông tin bảo hành sản phẩm:',
+                   '• Sản phẩm: '+str(product.get('model','Chưa cập nhật')),
+                   '• Mã seri: '+str(product.get('serial','')),
+                   '• Trạng thái: '+str(product.get('status','Chưa cập nhật'))]
+            if product.get('purchase_date'):lines.append('• Ngày mua: '+chat_date(product['purchase_date']))
+            if product.get('exp_date'):lines.append('• Hạn bảo hành: '+chat_date(product['exp_date']))
+            cards.append('\n'.join(lines))
+        return '\n\n'.join(cards)
+    if 'requests' in result:
+        cards=[]
+        for item in result['requests']:
+            lines=['Tiến độ hồ sơ '+item['rma_code']+':',
+                   '• Mã seri: '+item['serial'],
+                   '• Trạng thái: '+item.get('status_text',STATES.get(item['status'],'Chưa cập nhật')),
+                   '• Ngày tạo: '+chat_date(item.get('created_at')),
+                   '• Dự kiến hoàn tất: '+chat_date(item.get('expected_date'))]
+            if item.get('center_id'):lines.append('• Trung tâm: '+item['center_id'])
+            if item.get('technician'):lines.append('• Kỹ thuật viên: '+display_name(item['technician']))
+            cards.append('\n'.join(lines))
+        return '\n\n'.join(cards)
+    if 'inventory' in result:
+        names={'IN_STOCK':'Còn hàng','LOW_STOCK':'Sắp hết','OUT_OF_STOCK':'Hết hàng'}
+        return '\n\n'.join('Thông tin linh kiện '+item['part']+':\n'
+            +'• Trung tâm: '+item['center_id']+'\n'
+            +'• Tình trạng: '+names.get(item['stock_status'],'Chưa cập nhật')+'\n'
+            +'• Số lượng tồn: '+str(item['quantity'])+'\n'
+            +'• Thời gian xử lý dự kiến: '+item['estimate']
+            for item in result['inventory'])
+    if 'center_name' in result:
+        return '\n'.join([result['center_name'],
+            '• Địa chỉ: '+result['address'],
+            '• Điện thoại: '+result['phone'],
+            '• Giờ làm việc: '+result['hours'],
+            '• Kỹ thuật viên: '+display_name(result['technician']),
+            result['directions']])
+    return result.get('message','Bạn cần hỗ trợ tra cứu sản phẩm, hồ sơ hay chính sách bảo hành?')
+
 def create_app(config=None):
     app=Flask(__name__,template_folder='Templates')
     instance=BASE/'instance';instance.mkdir(exist_ok=True)
@@ -197,9 +267,7 @@ def create_app(config=None):
         elif any(k in t for k in ['liet','hong','khong len','rung lac','chop tat']):result=operations['diagnose']({'issue_desc':msg})
         if result is not None:
             if isinstance(result,tuple):result=result[0]
-            if isinstance(result.get('diagnosis'),dict):
-                result={**result,'diagnosis':{k:v for k,v in result['diagnosis'].items() if k!='disclaimer'}}
-            return dict(success=True,reply=json.dumps(result,ensure_ascii=False,indent=2),sources=['Hệ thống bảo hành'])
+            return dict(success=result.get('success',False),reply=chat_reply(result),sources=['Hệ thống bảo hành'])
         return dict(success=True,**kb.query(msg))
     operations['chat']=chat
     @app.get('/')

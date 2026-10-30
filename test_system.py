@@ -139,3 +139,36 @@ def test_tracking_cleans_legacy_technician_without_rewriting_record(setup):
     assert row['created_at']=='2026-10-29T23:21:42.158185+00:00'
     with sqlite3.connect(app.config['DATABASE']) as db:
         assert db.execute('SELECT technician FROM rma_requests WHERE rma_code=?',(code,)).fetchone()[0]==legacy
+
+
+@pytest.mark.parametrize('message,expected',[
+    ('Bàn phím bị rơi dẫn đến liệt nút có được bảo hành không', ['rơi vỡ','miễn phí','kiểm tra trực tiếp']),
+    ('Bàn phím bị liệt hàng phím số, không bị rơi, không vào nước', ['còn hạn','mã seri']),
+    ('Thiết bị hỏng rồi không biết nguyên nhân', ['chưa xác định','biểu hiện']),
+    ('Kiểm tra bảo hành SN-KEY-001', ['SN-KEY-001','Hạn bảo hành:','31/12/2027']),
+    ('Tìm trung tâm Thái Nguyên', ['Địa chỉ:','Giờ làm việc:','Kỹ thuật viên:']),
+    ('Linh kiện màn hình còn hàng không?', ['Hết hàng','3–5 ngày']),
+    ('Kiểm tra bảo hành SN-TEST-999', ['không có trong hệ thống']),
+])
+def test_chat_business_results_are_readable(setup,message,expected):
+    _,_,post=setup
+    data=post('chat',message=message).json
+    reply=data['reply']
+    assert not reply.lstrip().startswith('{')
+    assert all(word in reply for word in expected)
+    assert not any(key in reply for key in ['"success"','"diagnosis"','MANUFACTURER','MIXED','stock_status'])
+
+
+def test_chat_tracking_uses_vietnam_dates_and_preserves_access_control(setup):
+    app,_,post=setup
+    activate(post);code=rma(post).json['rma_code']
+    with sqlite3.connect(app.config['DATABASE']) as db:
+        db.execute('UPDATE rma_requests SET created_at=?,technician=? WHERE rma_code=?',
+                   ('2026-10-29T23:21:42.158185+00:00','KTV Thái Nguyên (mẫu)',code))
+    reply=post('chat',message='Kiểm tra đơn '+code).json['reply']
+    assert code in reply and '30/10/2026 06:21:42' in reply
+    assert '(mẫu)' not in reply and 'APPROVED_STP' not in reply
+    outsider=app.test_client();csrf=outsider.get('/api/session').json['csrf']
+    data=outsider.post('/api/chat',json={'message':code},headers={'X-CSRF-Token':csrf}).json
+    assert not data['success'] and 'không tìm thấy' in data['reply'].lower()
+    assert 'SN-DEMO-001' not in data['reply']
