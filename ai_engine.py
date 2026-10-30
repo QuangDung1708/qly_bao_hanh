@@ -39,4 +39,4 @@ class Knowledge:
         i=max(candidates,key=lambda i:scores[i]) if candidates else int(scores.argmax());doc=self.docs[i]
         if (scores[i]<0.06 and not candidates) or not any(norm(k) in t for k in doc['keywords'].split('|')):
             return {'reply':'Chưa tìm thấy thông tin phù hợp cho câu hỏi này. Vui lòng liên hệ bộ phận chăm sóc khách hàng hoặc mô tả rõ hơn.', 'sources':[]}
-        return {'reply':doc['text']+'\nNguồn: '+doc['source']+'\nNếu chưa khắc phục được, hãy tạo hồ sơ RMA.', 'sources':[doc['source']], 'retrieval':'TF-IDF / cosine, trả lời trích xuất'}
+        return {'reply':doc['text']+'\nNếu chưa khắc phục được, hãy tạo hồ sơ RMA.', 'sources':[doc['source']], 'retrieval':'TF-IDF / cosine, trả lời trích xuất'}
